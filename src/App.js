@@ -1,22 +1,80 @@
-import React from 'react';
+import React, { Component } from 'react';
 
-class App extends React.Component {
-  render() {
-    // 등록된 앱의 JavaScript key
-    const jsKey = "63458f6f9c843d7aa1b95d9890bb0b69";
-
-    // SDK는 한 번만 초기화해야 한다.
-    // 중복되는 초기화를 막기 위해 isInitialized()로 SDK 초기화 여부를 판단한다.
-    if (!window.Kakao.isInitialized()) {
-      // JavaScript key를 인자로 주고 SDK 초기화
-      window.Kakao.init(jsKey);
-      // SDK 초기화 여부를 확인하자.
-      console.log(window.Kakao.isInitialized());
+class App extends Component {
+    state = {
+        isLogin: false,
     }
-    return (
-      <h1>kakologin</h1>
-    )
-  }
+
+    loginWithkakao = () => {
+        try{
+            return new Promise((resolve, reject) => {
+                if(!window.Kakao){
+                    reject('Kakao 인스턴스가 존재하지 않습니다.')
+                }
+                window.Kakao.Auth.login({
+                    scope: 'profile, account_email, gender',
+                    success: (auth) => {
+                        console.log('정상적으로 로그인 되었습니다.', auth)
+                        window.Kakao.API.request({
+                            url: '/v2/user/me',
+                            success: res => {
+                                const kakao_account = res.kakao_acount;
+                                console.log(kakao_account);
+                            }
+                        })
+                        this.setState({
+                            isLogin: true
+                        })
+                    },
+                    fail: (err) => {
+                        console.error(err)
+                    }
+                })
+            })
+        } catch(err){
+            console.error(err)
+        }
+    }
+    logoutWithkakao = () => {
+        if(window.Kakao.Auth.getAccessToken()){
+            console.log('카카오 인증 액세스 토큰이 존재합니다', window.Kakao.Auth.getAccessToken())
+            window.Kakao.Auth.logout(() => {
+                console.log('로그아웃 되었습니다', window.Kakao.Auth.getAccessToken());
+                this.setState({
+                    isLogin: false
+                })
+            });
+        }
+    }
+
+    componentDidMount() {
+        window.Kakao.init('63458f6f9c843d7aa1b95d9890bb0b69');
+        if (window.Kakao.Auth.getAccessToken()){
+            console.log('액세스 토큰이 존재합니다. 세션을 유지합니다.')
+            this.setState({
+                isLogin: true
+            })
+        }
+    }
+
+    render() {
+        const { isLogin } = this.state;
+        const loginView = (<div>
+            <p>로그인화면</p>
+            <button onClick={this.loginWithkakao}>카카오 로그인</button>
+        </div>)
+
+        const mainView = (<div>
+            <p>메인 화면</p>
+            <button onClick={this.logoutWithkakao}>카카오 로그아웃</button>
+        </div>)
+
+        return (
+            <div className="App">
+                {isLogin ? mainView : loginView}
+            </div>
+        )
+    }
 }
 
 export default App;
